@@ -1,0 +1,185 @@
+# -*- coding: utf-8 -*-
+# vim: ft=yaml
+# yamllint disable rule:comments-indentation
+---
+healthchecks:
+  install:
+      # Install rootless containers running as dedicated user.
+    rootless: true
+      # When applying `clean` states, also remove application data.
+      # Setting this to true might incur accidental data loss!
+    remove_all_data_for_sure: false
+  config:
+    healthchecks:
+    # allowed_hosts: ["*"]
+    # apprise_enabled: false
+        # Database settings are not honored in linuxserver image.
+        # It uses an sqlite db at /config/hc.sqlite3
+    # db: sqlite
+    # db_conn_max_age: 0
+    # db_host: ""
+        # Defaults to `hc` for psql/mysql, path to db for sqlite
+    # db_name: null
+    # db_password: ""
+    # db_port: ""
+    # db_sslmode: prefer
+    # db_target_session_attrs: read-write
+        # Defaults to postgres or root (for mysql)
+    # db_user: null
+      debug: false
+    # default_from_email: healthchecks@example.org
+    # discord:
+    #   client_id: null
+    #   client_secret: null
+    # email:
+    #   host: ""
+    #   host_password: ""
+    #   host_user: ""
+    #   port: 587
+    #   use_tls: true
+    #   use_verification: true
+    # linenotify:
+    #   client_id: null
+    #   client_secret: null
+        # Defaults to site_name
+    # master_badge_label: null
+    # matrix:
+    #   access_token: null
+    #   homeserver: null
+    #   user_id: null
+    # mattermost_enabled: true
+    # msteams_enabled: true
+    # opsgenie_enabled: true
+    # pagertree_enabled: true
+    # pd:
+    #   app_id: null
+    #   enabled: true
+    # ping_body_limit: 10000
+    # ping_email_domain: localhost
+        # Defaults to site_root + '/ping/'
+    # ping_endpoint: null
+    # prometheus_enabled: true
+    # pushbullet:
+    #   client_id: null
+    #   client_secret: null
+    # pushover:
+    #   api_token: null
+    #   emergency_expiration: 86400
+    #   emergency_retry_delay: 300
+    #   subscription_url: null
+    # registration_open: true
+    # remote_user_header: null
+    # rp_id: null
+    # shell_enabled: false
+        # Unsupported in linuxserver image
+    # s3:
+    #   access_key: null
+    #   bucket: null
+    #   endpoint: null
+    #   region: null
+    #   secret_key: null
+    #   timeout: 60
+        # Linuxserver image generates this automatically
+    # secret_key: null
+        # This is deprecated, but mapped in linuxserver image
+    # signal_cli_enabled: true
+        # This is the replacement, but not supported in linuxserver atm afaics
+    # signal_cli_socket: null
+    # site_logo_url: null
+    # site_name: Mychecks
+      site_root: http://localhost:3475
+    # slack:
+    #   client_id: null
+    #   client_secret: null
+    #   enabled: true
+    # spike_enabled: true
+    # telegram:
+    #   bot_name: ExampleBot
+    #   token: null
+    # trello_app_key: null
+    # twilio:
+    #   account: null
+    #   auth: null
+    #   from: null
+    #   use_whatsapp: false
+        # Unsupported by linuxserver image
+    # use_payments: false
+    # victorops_enabled: true
+    # webhooks_enabled: true
+    # zulip_enabled: true
+      # These settings are not specific to the healthchecks app
+    misc:
+        # Port on container host to map to container port 8000
+      port: 3475
+        # Always regenerate the settings file from env vars.
+        # Setting this to false makes this formula not work as expected.
+      regenerate_settings: true
+        # If there is no superuser in the DB, generate one with this email
+      superuser_init_email: null
+        # Pillar key to look up email address from (avoids cache writes)
+      superuser_init_email_pillar: null
+        # Password for the generated superuser
+      superuser_init_pass: null
+        # Pillar key to look up password from (avoids cache writes)
+      superuser_init_pass_pillar: null
+
+  lookup:
+    rootgroup: root
+    compose:
+      create_pod: null
+      pod_args: null
+      project_name: healthchecks
+      remove_orphans: true
+      service:
+        container_prefix: null
+        ephemeral: true
+        pod_prefix: null
+        restart_policy: on-failure
+        separator: null
+        stop_timeout: null
+    paths:
+      base: /opt/containers/healthchecks
+      compose: docker-compose.yml
+      config_healthchecks: healthchecks.env
+      data: data
+    user:
+      groups: []
+      home: null
+      name: healthchecks
+      shell: /usr/sbin/nologin
+      uid: null
+    containers:
+      healthchecks:
+        image: lscr.io/linuxserver/healthchecks:latest
+
+  tofs:
+      # The files_switch key serves as a selector for alternative
+      # directories under the formula files directory. See TOFS pattern
+      # doc for more info.
+      # Note: Any value not evaluated by `config.get` will be used literally.
+      # This can be used to set custom paths, as many levels deep as required.
+    files_switch:
+      - any/path/can/be/used/here
+      - id
+      - roles
+      - osfinger
+      - os
+      - os_family
+
+      # All aspects of path/file resolution are customisable using the options below.
+      # This is unnecessary in most cases; there are sensible defaults.
+      # Default path: salt://< path_prefix >/< dirs.files >/< dirs.default >
+      # I.e.: salt://healthchecks/files/default
+      # path_prefix: template_alt
+      # dirs:
+      #   files: files_alt
+      #   default: default_alt
+      # The entries under `source_files` are prepended to the default source files
+      # given for the state
+    source_files:
+      Healthchecks compose file is managed:
+        - docker-compose_alt.yml
+        - docker-compose_alt.yml.j2
+      healthchecks environment file is managed:
+        - healthchecks_alt.env
+        - healthchecks_alt.env.j2

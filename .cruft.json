@@ -1,0 +1,53 @@
+{
+  "template": "https://github.com/lkubb/salt-template-formula-compose",
+  "commit": "3bf116fca254f07ebcba5a30fcc5f071472ef84a",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "_extensions": [
+        "local_extensions.YAMLDumper"
+      ],
+      "_jinja2_env_vars": {
+        "block_start_string": "{!",
+        "block_end_string": "!}",
+        "variable_start_string": "{=",
+        "variable_end_string": "=}",
+        "comment_start_string": "{@",
+        "comment_end_string": "@}"
+      },
+      "name": "Healthchecks",
+      "abbr": "healthchecks",
+      "abbr_pysafe": "healthchecks",
+      "project_name": "healthchecks",
+      "containers": "healthchecks",
+      "git_username": "lkubb",
+      "_lookup": {
+        "containers": {
+          "healthchecks": {
+            "image": "lscr.io/linuxserver/healthchecks:latest"
+          }
+        },
+        "paths": {
+          "data": "data"
+        }
+      },
+      "_settings": {
+        "config": {
+          "healthchecks": {
+            "debug": false
+          },
+          "misc": {
+            "port": 3475,
+            "regenerate_settings": true,
+            "superuser_init_email": null,
+            "superuser_init_email_pillar": null,
+            "superuser_init_pass": null,
+            "superuser_init_pass_pillar": null
+          }
+        }
+      },
+      "_template": "https://github.com/lkubb/salt-template-formula-compose"
+    }
+  },
+  "directory": null
+}

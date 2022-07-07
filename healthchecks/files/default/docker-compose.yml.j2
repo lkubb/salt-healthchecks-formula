@@ -1,0 +1,12 @@
+version: "2.1"
+services:
+  healthchecks:
+    image: {{ healthchecks.lookup.containers.healthchecks.image }}
+    container_name: healthchecks
+    env_file:
+      - {{ healthchecks.lookup.paths.config_healthchecks }}
+    volumes:
+      - {{ healthchecks.lookup.paths.data }}:/config
+    ports:
+      - {{ healthchecks.config.misc.port }}:8000
+    restart: unless-stopped
