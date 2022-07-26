@@ -22,6 +22,8 @@ Healthchecks user session is initialized at boot:
   compose.lingering_managed:
     - name: {{ healthchecks.lookup.user.name }}
     - enable: {{ healthchecks.install.rootless }}
+    - require:
+      - user: {{ healthchecks.lookup.user.name }}
 
 Healthchecks paths are present:
   file.directory:

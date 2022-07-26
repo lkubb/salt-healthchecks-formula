@@ -17,6 +17,7 @@ healthchecks:
         ephemeral: true
         pod_prefix: null
         restart_policy: on-failure
+        restart_sec: 2
         separator: null
         stop_timeout: null
     paths:
@@ -30,6 +31,7 @@ healthchecks:
       name: healthchecks
       shell: /usr/sbin/nologin
       uid: null
+      gid: null
     containers:
       healthchecks:
         image: lscr.io/linuxserver/healthchecks:latest
