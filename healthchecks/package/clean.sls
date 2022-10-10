@@ -8,6 +8,18 @@
 include:
   - {{ sls_config_clean }}
 
+{%- if healthchecks.install.autoupdate_service %}
+
+Podman autoupdate service is disabled for Healthchecks:
+{%-   if healthchecks.install.rootless %}
+  compose.systemd_service_disabled:
+    - user: {{ healthchecks.lookup.user.name }}
+{%-   else %}
+  service.disabled:
+{%-   endif %}
+    - name: podman-auto-update.timer
+{%- endif %}
+
 Healthchecks is absent:
   compose.removed:
     - name: {{ healthchecks.lookup.paths.compose }}

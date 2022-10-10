@@ -9,4 +9,8 @@ services:
       - {{ healthchecks.lookup.paths.data }}:/config
     ports:
       - {{ healthchecks.config.misc.port }}:8000
+{%- if healthchecks.install.autoupdate %}
+    labels:
+      - io.containers.autoupdate=registry
+{%- endif %}
     restart: unless-stopped

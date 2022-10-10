@@ -71,3 +71,15 @@ Healthchecks is installed:
     - require:
       - user: {{ healthchecks.lookup.user.name }}
 {%- endif %}
+
+{%- if healthchecks.install.autoupdate_service is not none %}
+
+Podman autoupdate service is managed for Healthchecks:
+{%-   if healthchecks.install.rootless %}
+  compose.systemd_service_{{ "enabled" if healthchecks.install.autoupdate_service else "disabled" }}:
+    - user: {{ healthchecks.lookup.user.name }}
+{%-   else %}
+  service.{{ "enabled" if healthchecks.install.autoupdate_service else "disabled" }}:
+{%-   endif %}
+    - name: podman-auto-update.timer
+{%- endif %}
