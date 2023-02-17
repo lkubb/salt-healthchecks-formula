@@ -1,8 +1,14 @@
-# -*- coding: utf-8 -*-
 # vim: ft=sls
 
-{%- set tplroot = tpldir.split('/')[0] %}
-{%- set sls_config_clean = tplroot ~ '.config.clean' %}
+{#-
+    Removes the healthchecks containers
+    and the corresponding user account and service units.
+    Has a depency on `healthchecks.config.clean`_.
+    If ``remove_all_data_for_sure`` was set, also removes all data.
+#}
+
+{%- set tplroot = tpldir.split("/")[0] %}
+{%- set sls_config_clean = tplroot ~ ".config.clean" %}
 {%- from tplroot ~ "/map.jinja" import mapdata as healthchecks with context %}
 
 include:
@@ -40,6 +46,25 @@ Healthchecks compose file is absent:
     - name: {{ healthchecks.lookup.paths.compose }}
     - require:
       - Healthchecks is absent
+
+{%- if healthchecks.install.podman_api %}
+
+Healthchecks podman API is unavailable:
+  compose.systemd_service_dead:
+    - name: podman
+    - user: {{ healthchecks.lookup.user.name }}
+    - onlyif:
+      - fun: user.info
+        name: {{ healthchecks.lookup.user.name }}
+
+Healthchecks podman API is disabled:
+  compose.systemd_service_disabled:
+    - name: podman
+    - user: {{ healthchecks.lookup.user.name }}
+    - onlyif:
+      - fun: user.info
+        name: {{ healthchecks.lookup.user.name }}
+{%- endif %}
 
 Healthchecks user session is not initialized at boot:
   compose.lingering_managed:

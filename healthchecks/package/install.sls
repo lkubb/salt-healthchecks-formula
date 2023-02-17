@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
 # vim: ft=sls
 
-{%- set tplroot = tpldir.split('/')[0] %}
+{%- set tplroot = tpldir.split("/")[0] %}
 {%- from tplroot ~ "/map.jinja" import mapdata as healthchecks with context %}
 {%- from tplroot ~ "/libtofs.jinja" import files_switch with context %}
 
@@ -35,11 +34,28 @@ Healthchecks paths are present:
     - require:
       - user: {{ healthchecks.lookup.user.name }}
 
+{%- if healthchecks.install.podman_api %}
+
+Healthchecks podman API is enabled:
+  compose.systemd_service_enabled:
+    - name: podman
+    - user: {{ healthchecks.lookup.user.name }}
+    - require:
+      - Healthchecks user session is initialized at boot
+
+Healthchecks podman API is available:
+  compose.systemd_service_running:
+    - name: podman
+    - user: {{ healthchecks.lookup.user.name }}
+    - require:
+      - Healthchecks user session is initialized at boot
+{%- endif %}
+
 Healthchecks compose file is managed:
   file.managed:
     - name: {{ healthchecks.lookup.paths.compose }}
-    - source: {{ files_switch(['docker-compose.yml', 'docker-compose.yml.j2'],
-                              lookup='Healthchecks compose file is present'
+    - source: {{ files_switch(["docker-compose.yml", "docker-compose.yml.j2"],
+                              lookup="Healthchecks compose file is present"
                  )
               }}
     - mode: '0644'
