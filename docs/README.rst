@@ -42,6 +42,7 @@ If you need (non-default) configuration, please refer to:
 Special notes
 -------------
 * This formula is written with the custom `compose modules <https://github.com/lkubb/salt-podman-formula>`_ in mind and will not work without them.
+* It also provides custom modules to interface with Healthchecks. A nice feature is that you can request ping URLs from a central location, similar to how the ``x509`` modules work. See the execution module for details.
 
 Configuration
 -------------

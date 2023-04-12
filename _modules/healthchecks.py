@@ -26,6 +26,48 @@ To override the default profile name (``hlcks``), you can pass ``healthchecks_pr
 To override url/token/verify during a function call, you can pass
 ``healthchecks_url``/``healthchecks_token``/``healthchecks_verify`` as kwargs.
 
+Remote issuance of ping URLs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+It is possible to request a ping URL from another minion.
+
+Peer communication
+^^^^^^^^^^^^^^^^^^
+To be able to use this functionality, it is required to configure the Salt
+master to allow :term:`Peer Communication`:
+
+.. code-block:: yaml
+
+    # /etc/salt/master.d/peer.conf
+
+    peer:
+      .*:
+        - healthchecks.get_ping_url_remote
+
+Issuance policies
+^^^^^^^^^^^^^^^^^
+In addition, the minion issuing the ping urls needs to have at least one
+issuance policy configured, remote calls not referencing one are always
+rejected.
+
+The parameters specified in this policy override any
+parameters passed from the minion requesting the ping url. It can be
+configured in the issuing minion's pillar, which takes precedence, or any
+location :py:func:`config.get <salt.modules.config.get>` looks up in.
+Issuance policies are defined under ``healthchecks_policies``.
+
+You can restrict which minions can request a ping url under a configured
+issuance policy by specifying a matcher in ``minions``. This can be a glob
+or compound matcher (the latter requires further setup @TODO document).
+
+.. code-block:: yaml
+
+    healthchecks_policies:
+      borgmatic:
+        - minions: 'www*'
+        - channels:
+            - kind: email
+        - timeout: 3600
+
 .. _hlcks-setup:
 """
 import json
@@ -600,6 +642,190 @@ def fetch_channel(name=None, uuid=None, **kwargs):
     return None
 
 
+def get_ping_url(
+    name,
+    server=None,
+    policy=None,
+    **kwargs,
+):
+    """
+    Return a ping URL for a check with the specified configuration applied.
+    It is possible to request another minion to issue it in order to avoid
+    having to distribute API access to each minion requesting a ping URL.
+
+    This function accepts all parameters ``write_check`` supports.
+
+    CLI Example:
+
+    .. code-block:: bash
+
+        salt '*' healthchecks.get_ping_url mycheck timeout=86400 channels='*'
+        salt '*' healthchecks.get_ping_url mycheck server=healthchecks policy=borgmatic timeout=86400 channels='*'
+
+    name
+        The name of the check. If it does not exist, it will be created.
+
+    server
+        Request a ping URL from this minion instead of issuing one locally.
+
+    policy
+        When requesting a ping URL from another minion, an issuance policy is
+        required. This will only be respected for remote issuance.
+        The name of the policy has to be defined on the issuing minion.
+        See `Issuance policies`_ for details.
+    """
+    if server and server != __grains__["id"]:
+        if not policy:
+            raise SaltInvocationError("Remote issuance requires a policy")
+        kwargs["name"] = name
+        return _query_remote(server, policy, kwargs)
+
+    if policy:
+        pol = _get_policy(policy)
+        # Sensibility is questionable, more for consistency
+        if "minions" in pol:
+            if not _match_minions(pol.pop("minions"), __grains__["id"]):
+                raise CommandExecutionError(
+                    "minion not permitted to use specified policy"
+                )
+        kwargs.pop("healthchecks_token", None)
+        kwargs.pop("healthchecks_url", None)
+        kwargs.pop("healthchecks_verify", None)
+        kwargs.update(pol)
+        if server:
+            name = f"{__grains__['id']} {name}"
+
+    ret = __salt__["state.single"]("healthchecks.check_present", name, **kwargs)
+    if not ret[next(iter(ret))]["result"]:
+        log.error(ret[next(iter(ret))])
+        raise CommandExecutionError(f"Could not manage check {name}")
+    check = __salt__["healthchecks.fetch_check"](
+        name,
+        healthchecks_profile=kwargs.get("healthchecks_profile"),
+        healthchecks_token=kwargs.get("healthchecks_token"),
+        healthchecks_url=kwargs.get("healthchecks_url"),
+        healthchecks_verify=kwargs.get("healthchecks_verify"),
+    )
+    return check["ping_url"]
+
+
+def _query_remote(server, policy, kwargs):
+    result = __salt__["publish.publish"](
+        server,
+        "healthchecks.get_ping_url_remote",
+        arg=[policy, kwargs],
+    )
+
+    if not result:
+        raise SaltInvocationError(
+            "server did not respond."
+            " Salt master must permit peers to"
+            " call the get_ping_url_remote function."
+        )
+    result = result[next(iter(result))]
+    if not isinstance(result, dict) or "data" not in result:
+        log.error("Received invalid return value from server: %s", result)
+        raise CommandExecutionError(
+            "Received invalid return value from server. See minion log for details"
+        )
+    if result.get("errors"):
+        raise CommandExecutionError(
+            "server reported errors:\n" + "\n".join(result["errors"])
+        )
+    return result["data"]
+
+
+def get_ping_url_remote(policy, kwargs, **more_kwargs):
+    """
+    Request a healthcheck ping URL from an issuing minion.
+    This is for internal use.
+
+    CLI Example:
+
+    .. code-block:: bash
+
+        salt '*' healthchecks.get_ping_url_remote borgmatic kwargs="{'name': 'test'}"
+
+    policy
+        The name of the policy to use. Required.
+
+    kwargs
+        A dict containing all the arguments to be passed into the
+        ``healthchecks.write_check`` function.
+    """
+    ret = {"data": None, "errors": []}
+    try:
+        policy = _get_policy(policy)
+        if not policy:
+            ret["errors"].append(
+                "policy must be specified and defined on issuing minion"
+            )
+            return ret
+        if "minions" in policy:
+            if "__pub_id" not in more_kwargs:
+                ret["errors"].append(
+                    "minion sending this request could not be identified"
+                )
+                return ret
+            # also pop "minions" to avoid leaking more details than necessary
+            if not _match_minions(policy.pop("minions"), more_kwargs["__pub_id"]):
+                ret["errors"].append("minion not permitted to use specified policy")
+                return ret
+        name = kwargs.get("name", "")
+        name = more_kwargs["__pub_id"] + (f" {name}" if name else name)
+        kwargs.update(policy)
+        kwargs["name"] = name
+        # Ensure only local configuration is used
+        kwargs.pop("healthchecks_token", None)
+        kwargs.pop("healthchecks_url", None)
+        kwargs.pop("healthchecks_verify", None)
+        kwargs.pop("server", None)
+        kwargs.pop("policy", None)
+    except Exception as err:  # pylint: disable=broad-except
+        log.error(str(err))
+        return {
+            "data": None,
+            "errors": [
+                "Failed building the policy. See issuing minion server log for details."
+            ],
+        }
+    try:
+        ret["data"] = get_ping_url(**kwargs)
+        return ret
+    except Exception as err:  # pylint: disable=broad-except
+        ret["data"] = None
+        ret["errors"].append(str(err))
+        return ret
+
+    err_message = "Internal error. This is most likely a bug."
+    log.error(err_message)
+    return {"data": None, "errors": [err_message]}
+
+
+def _get_policy(name):
+    if name is None:
+        return {}
+    policies = __salt__["pillar.get"]("healthchecks_policies", {}).get(name)
+    policies = policies or __salt__["config.get"]("healthchecks_policies", {}).get(name)
+    return policies or {}
+
+
+def _match_minions(test, minion):
+    if "@" in test:
+        # This runner is currently not found in salt master
+        # https://github.com/saltstack/salt/pull/63297
+        match = __salt__["publish.runner"]("match.compound_matches", arg=[test, minion])
+        if match is None:
+            raise CommandExecutionError(
+                "Could not check minion match for compound expression. "
+                "Is this minion allowed to run `match.compound_matches` on the master?"
+            )
+        if match == minion:
+            return True
+        return False
+    return __salt__["match.glob"](test, minion)
+
+
 def parse_check_params(
     name=None,
     tags=None,
@@ -653,7 +879,7 @@ def parse_check_params(
             if isinstance(channel, dict):
                 # find channels of type and/or with name
                 for match in list_channels(**channel, **kwargs):
-                    parsed_channels.append(match["ping_url"].split("/ping/")[-1])
+                    parsed_channels.append(match["id"])
                 continue
             parsed_channels.append(channel)
         channels = ",".join(parsed_channels)

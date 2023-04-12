@@ -28,7 +28,14 @@ class HealthchecksClient:
             add_headers=add_headers,
         )
 
-    def get(self, endpoint, params=None, raise_error=True, add_headers=None, decode_json=True):
+    def get(
+        self,
+        endpoint,
+        params=None,
+        raise_error=True,
+        add_headers=None,
+        decode_json=True,
+    ):
         """
         Wrapper for client.request("GET", ...)
         """
