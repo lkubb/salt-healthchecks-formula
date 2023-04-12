@@ -53,6 +53,8 @@ healthchecks:
       superuser_init_email_pillar: null
       superuser_init_pass: null
       superuser_init_pass_pillar: null
+  checks: {}
+  checks_absent: []
 
   tofs:
     # The files_switch key serves as a selector for alternative

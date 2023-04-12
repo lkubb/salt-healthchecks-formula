@@ -13,6 +13,10 @@ The following states are found in this formula:
 
 This installs the healthchecks containers,
 manages their configuration and starts their services.
+Also manages checks, if configured.
+If there are multiple projects, each one needs a separate
+API key. You can include them in the check definitions,
+see ``healthchecks_profile`` or ``healthchecks_token``.
 
 
 ``healthchecks.package``
@@ -34,12 +38,18 @@ and enables them at boot time.
 Has a dependency on `healthchecks.config`_.
 
 
+``healthchecks.checks``
+^^^^^^^^^^^^^^^^^^^^^^^
+Manages configured checks.
+Has a dependency on `healthchecks.service`_.
+
+
 ``healthchecks.clean``
 ^^^^^^^^^^^^^^^^^^^^^^
 *Meta-state*.
 
 Undoes everything performed in the ``healthchecks`` meta-state
-in reverse order, i.e. stops the healthchecks services,
+except configured checks in reverse order, i.e. stops the healthchecks services,
 removes their configuration and then removes their containers.
 
 
@@ -64,5 +74,10 @@ and thus differs from the usual behavior.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Stops the healthchecks container services
 and disables them at boot time.
+
+
+``healthchecks.checks.clean``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Removes all managed checks.
 
 

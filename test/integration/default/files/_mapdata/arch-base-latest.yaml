@@ -55,6 +55,8 @@ values:
       superuser_init_email_pillar: null
       superuser_init_pass: null
       superuser_init_pass_pillar: null
+  checks: {}
+  checks_absent: []
   map_jinja:
     sources:
     - Y:G@osarch

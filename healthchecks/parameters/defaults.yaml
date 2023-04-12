@@ -52,6 +52,8 @@ values:
       superuser_init_email_pillar: null
       superuser_init_pass: null
       superuser_init_pass_pillar: null
+  checks: {}
+  checks_absent: []
   # Just here for testing
   added_in_defaults: defaults_value
   winner: defaults

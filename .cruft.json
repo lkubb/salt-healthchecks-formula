@@ -44,7 +44,9 @@
             "superuser_init_pass": null,
             "superuser_init_pass_pillar": null
           }
-        }
+        },
+        "checks": {},
+        "checks_absent": []
       },
       "_template": "https://github.com/lkubb/salt-template-formula-compose"
     }
