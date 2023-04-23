@@ -793,6 +793,7 @@ def get_ping_url_remote(policy, kwargs, **more_kwargs):
         ret["data"] = get_ping_url(**kwargs)
         return ret
     except Exception as err:  # pylint: disable=broad-except
+        log.exception(err)
         ret["data"] = None
         ret["errors"].append(str(err))
         return ret
