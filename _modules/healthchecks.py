@@ -74,6 +74,7 @@ import json
 import logging
 
 import healthchecksutil as hcutil
+import salt.cache
 from salt.exceptions import CommandExecutionError, SaltInvocationError
 
 __virtualname__ = "healthchecks"
@@ -646,6 +647,7 @@ def get_ping_url(
     name,
     server=None,
     policy=None,
+    cache=True,
     **kwargs,
 ):
     """
@@ -673,40 +675,59 @@ def get_ping_url(
         required. This will only be respected for remote issuance.
         The name of the policy has to be defined on the issuing minion.
         See `Issuance policies`_ for details.
+
+    cache
+        Cache received ping URLs. The cache will only be accessed if there is
+        a problem receiving the ping URL to prevent (highstate) rendering issues.
+        If it has not been cached before, will still error. Defaults to true.
     """
-    if server and server != __grains__["id"]:
-        if not policy:
-            raise SaltInvocationError("Remote issuance requires a policy")
-        kwargs["name"] = name
-        return _query_remote(server, policy, kwargs)
+    cbank = "hlcks/check_returns"
+    cache = salt.cache.factory(__opts__)
 
-    if policy:
-        pol = _get_policy(policy)
-        # Sensibility is questionable, more for consistency
-        if "minions" in pol:
-            if not _match_minions(pol.pop("minions"), __grains__["id"]):
-                raise CommandExecutionError(
-                    "minion not permitted to use specified policy"
-                )
-        kwargs.pop("healthchecks_token", None)
-        kwargs.pop("healthchecks_url", None)
-        kwargs.pop("healthchecks_verify", None)
-        kwargs.update(pol)
-        if server:
-            name = f"{__grains__['id']} {name}"
+    try:
+        if server and server != __grains__["id"]:
+            if not policy:
+                raise SaltInvocationError("Remote issuance requires a policy")
+            kwargs["name"] = name
+            result = _query_remote(server, policy, kwargs)
+            cache.store(cbank, name, result)
 
-    ret = __salt__["state.single"]("healthchecks.check_present", name, **kwargs)
-    if not ret[next(iter(ret))]["result"]:
-        log.error(ret[next(iter(ret))])
-        raise CommandExecutionError(f"Could not manage check {name}")
-    check = __salt__["healthchecks.fetch_check"](
-        name,
-        healthchecks_profile=kwargs.get("healthchecks_profile"),
-        healthchecks_token=kwargs.get("healthchecks_token"),
-        healthchecks_url=kwargs.get("healthchecks_url"),
-        healthchecks_verify=kwargs.get("healthchecks_verify"),
-    )
-    return check["ping_url"]
+        if policy:
+            pol = _get_policy(policy)
+            # Sensibility is questionable, more for consistency
+            if "minions" in pol:
+                if not _match_minions(pol.pop("minions"), __grains__["id"]):
+                    raise CommandExecutionError(
+                        "minion not permitted to use specified policy"
+                    )
+            kwargs.pop("healthchecks_token", None)
+            kwargs.pop("healthchecks_url", None)
+            kwargs.pop("healthchecks_verify", None)
+            kwargs.update(pol)
+            if server:
+                name = f"{__grains__['id']} {name}"
+
+        ret = __salt__["state.single"]("healthchecks.check_present", name, **kwargs)
+        if not isinstance(ret, dict):
+            log.error(f"Fatal error while managing check {name}: {ret}")
+            raise CommandExecutionError(f"Fatal error while managing check {name}")
+        res = ret[next(iter(ret))]
+        if not res["result"]:
+            log.error(f"Could not manage check {name}: {res}")
+            raise CommandExecutionError(f"Could not manage check {name}")
+        check = __salt__["healthchecks.fetch_check"](
+            name,
+            healthchecks_profile=kwargs.get("healthchecks_profile"),
+            healthchecks_token=kwargs.get("healthchecks_token"),
+            healthchecks_url=kwargs.get("healthchecks_url"),
+            healthchecks_verify=kwargs.get("healthchecks_verify"),
+        )
+        cache.store(cbank, name, check["ping_url"])
+        return check["ping_url"]
+    except (CommandExecutionError, SaltInvocationError):
+        if cache.contains(cbank, name):
+            return cache.fetch(cbank, name)
+        raise
 
 
 def _query_remote(server, policy, kwargs):
