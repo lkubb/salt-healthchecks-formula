@@ -682,7 +682,8 @@ def get_ping_url(
         If it has not been cached before, will still error. Defaults to true.
     """
     cbank = "hlcks/check_returns"
-    cache = salt.cache.factory(__opts__)
+    if cache:
+        pingcache = salt.cache.factory(__opts__)
 
     try:
         if server and server != __grains__["id"]:
@@ -690,7 +691,8 @@ def get_ping_url(
                 raise SaltInvocationError("Remote issuance requires a policy")
             kwargs["name"] = name
             result = _query_remote(server, policy, kwargs)
-            cache.store(cbank, name, result)
+            if cache:
+                pingcache.store(cbank, name, result)
             return result
 
         if policy:
@@ -718,12 +720,13 @@ def get_ping_url(
             healthchecks_url=kwargs.get("healthchecks_url"),
             healthchecks_verify=kwargs.get("healthchecks_verify"),
         )
-        cache.store(cbank, name, check["ping_url"])
+        if cache:
+            pingcache.store(cbank, name, check["ping_url"])
         return check["ping_url"]
     except (CommandExecutionError, SaltInvocationError) as err:
         log.error(f"Could not manage check {name}: {err}")
-        if cache.contains(cbank, name):
-            return cache.fetch(cbank, name)
+        if cache and pingcache.contains(cbank, name):
+            return pingcache.fetch(cbank, name)
         raise
 
 
