@@ -98,43 +98,34 @@ def check_present(
         "changes": {},
     }
     try:
-        current = __salt__["healthchecks.fetch_check"](name=name, **kwargs)
-        changes = {}
-
-        if current is not None:
-            parsed_params = __salt__["healthchecks.parse_check_params"](
-                name=name,
-                tags=tags,
-                desc=desc,
-                timeout=timeout,
-                grace=grace,
-                schedule=schedule,
-                tz=tz,
-                manual_resume=manual_resume,
-                methods=methods,
-                channels=channels,
-                start_kw=start_kw,
-                success_kw=success_kw,
-                failure_kw=failure_kw,
-                filter_subject=filter_subject,
-                filter_body=filter_body,
-                **kwargs,
-            )
-            for param, val in parsed_params.items():
-                if current[param] != val:
-                    changes[param] = {"old": current[param], "new": val}
-        else:
-            changes["created"] = name
-
+        changes = __salt__["healthchecks.get_managed_changes"](
+            name=name,
+            tags=tags,
+            desc=desc,
+            timeout=timeout,
+            grace=grace,
+            schedule=schedule,
+            tz=tz,
+            manual_resume=manual_resume,
+            methods=methods,
+            channels=channels,
+            start_kw=start_kw,
+            success_kw=success_kw,
+            failure_kw=failure_kw,
+            filter_subject=filter_subject,
+            filter_body=filter_body,
+            **kwargs,
+        )
         if not changes:
             return ret
+
         ret["changes"] = changes
 
         if __opts__["test"]:
             ret["result"] = None
             ret[
                 "comment"
-            ] = f"The check would have been {'created' if not current else 'updated'}"
+            ] = f"The check would have been {'created' if 'created' in changes else 'updated'}"
             return ret
 
         __salt__["healthchecks.write_check"](
@@ -155,7 +146,9 @@ def check_present(
             filter_body=filter_body,
             **kwargs,
         )
-        ret["comment"] = f"The check has been {'created' if not current else 'updated'}"
+        ret[
+            "comment"
+        ] = f"The check has been {'created' if 'created' in changes else 'updated'}"
     except (CommandExecutionError, SaltInvocationError) as err:
         ret["result"] = False
         ret["comment"] = str(err)

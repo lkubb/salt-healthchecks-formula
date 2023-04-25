@@ -691,6 +691,7 @@ def get_ping_url(
             kwargs["name"] = name
             result = _query_remote(server, policy, kwargs)
             cache.store(cbank, name, result)
+            return result
 
         if policy:
             pol = _get_policy(policy)
@@ -707,15 +708,10 @@ def get_ping_url(
             if server:
                 name = f"{__grains__['id']} {name}"
 
-        ret = __salt__["state.single"]("healthchecks.check_present", name, **kwargs)
-        if not isinstance(ret, dict):
-            log.error(f"Fatal error while managing check {name}: {ret}")
-            raise CommandExecutionError(f"Fatal error while managing check {name}")
-        res = ret[next(iter(ret))]
-        if not res["result"]:
-            log.error(f"Could not manage check {name}: {res}")
-            raise CommandExecutionError(f"Could not manage check {name}")
-        check = __salt__["healthchecks.fetch_check"](
+        changes = get_managed_changes(name, **kwargs)
+        if changes:
+            write_check(name, **kwargs)
+        check = fetch_check(
             name,
             healthchecks_profile=kwargs.get("healthchecks_profile"),
             healthchecks_token=kwargs.get("healthchecks_token"),
@@ -724,7 +720,8 @@ def get_ping_url(
         )
         cache.store(cbank, name, check["ping_url"])
         return check["ping_url"]
-    except (CommandExecutionError, SaltInvocationError):
+    except (CommandExecutionError, SaltInvocationError) as err:
+        log.error(f"Could not manage check {name}: {err}")
         if cache.contains(cbank, name):
             return cache.fetch(cbank, name)
         raise
@@ -934,6 +931,64 @@ def parse_check_params(
             payload[param] = defaults[param]
 
     return payload
+
+
+def get_managed_changes(
+    name,
+    tags=None,
+    desc=None,
+    timeout=None,
+    grace=None,
+    schedule=None,
+    tz=None,
+    manual_resume=None,
+    methods=None,
+    channels=None,
+    start_kw=None,
+    success_kw=None,
+    failure_kw=None,
+    filter_subject=None,
+    filter_body=None,
+    **kwargs,
+):
+    """
+    Internal use. This is what would actually be found in the state module
+    as part of check_present.
+
+    Since ``get_ping_url`` needs access to this function and might be
+    called during a highstate on the minion acting as a server,
+    ``state.single`` cannot be used reliably (multiple parallel state calls
+    are not allowed).
+    """
+    current = fetch_check(name=name, **kwargs)
+    changes = {}
+
+    if current is not None:
+        parsed_params = parse_check_params(
+            name=name,
+            tags=tags,
+            desc=desc,
+            timeout=timeout,
+            grace=grace,
+            schedule=schedule,
+            tz=tz,
+            manual_resume=manual_resume,
+            methods=methods,
+            channels=channels,
+            start_kw=start_kw,
+            success_kw=success_kw,
+            failure_kw=failure_kw,
+            filter_subject=filter_subject,
+            filter_body=filter_body,
+            **kwargs,
+        )
+        for param, val in parsed_params.items():
+            if current[param] != val:
+                changes[param] = {"old": current[param], "new": val}
+    else:
+        changes["created"] = name
+
+    return changes
 
 
 def _get_check_uuid(name, uuid, **kwargs):
