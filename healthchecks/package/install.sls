@@ -2,7 +2,7 @@
 
 {%- set tplroot = tpldir.split("/")[0] %}
 {%- from tplroot ~ "/map.jinja" import mapdata as healthchecks with context %}
-{%- from tplroot ~ "/libtofs.jinja" import files_switch with context %}
+{%- from tplroot ~ "/libtofsstack.jinja" import files_switch with context %}
 
 Healthchecks user account is present:
   user.present:
@@ -54,14 +54,16 @@ Healthchecks podman API is available:
 Healthchecks compose file is managed:
   file.managed:
     - name: {{ healthchecks.lookup.paths.compose }}
-    - source: {{ files_switch(["docker-compose.yml", "docker-compose.yml.j2"],
-                              lookup="Healthchecks compose file is present"
+    - source: {{ files_switch(
+                    ["docker-compose.yml", "docker-compose.yml.j2"],
+                    config=healthchecks,
+                    lookup="Healthchecks compose file is present",
                  )
               }}
     - mode: '0644'
     - user: root
     - group: {{ healthchecks.lookup.rootgroup }}
-    - makedirs: True
+    - makedirs: true
     - template: jinja
     - makedirs: true
     - context:
