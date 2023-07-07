@@ -834,16 +834,19 @@ def _get_policy(name):
 
 def _match_minions(test, minion):
     if "@" in test:
-        # This runner is currently not found in salt master
-        # https://github.com/saltstack/salt/pull/63297
         match = __salt__["publish.runner"]("match.compound_matches", arg=[test, minion])
         if match is None:
             raise CommandExecutionError(
                 "Could not check minion match for compound expression. "
                 "Is this minion allowed to run `match.compound_matches` on the master?"
             )
-        if match == minion:
-            return True
+        try:
+            return match["res"] == minion
+        except (KeyError, TypeError) as err:
+            raise CommandExecutionError(
+                "Invalid return value of match.compound_matches."
+            ) from err
+        # The following line should never be reached.
         return False
     return __salt__["match.glob"](test, minion)
 
