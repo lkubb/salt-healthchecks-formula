@@ -26,7 +26,7 @@ Healthchecks environment files are managed:
     - template: jinja
     - require:
       - user: {{ healthchecks.lookup.user.name }}
-    - watch_in:
+    - require_in:
       - Healthchecks is installed
     - context:
         healthchecks: {{ healthchecks | json }}

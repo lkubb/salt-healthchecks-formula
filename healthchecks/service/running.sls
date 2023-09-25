@@ -34,3 +34,4 @@ Healthchecks service is running:
 {%- endif %}
     - watch:
       - Healthchecks is installed
+      - sls: {{ sls_config_file }}
