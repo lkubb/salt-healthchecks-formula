@@ -14,3 +14,14 @@
 {%- if not mapdata.lookup.user.home %}
   {%- do mapdata.lookup.user.update({"home": base_path}) %}
 {%- endif %}
+
+{#-
+    Set CSRF_ALLOWED_ORIGINS if it was not set explicitly.
+    This replicates the behavior of the LSIO container,
+    but explicitly.
+    We can access site_root without a check for its existence
+    since the container does not start without it.
+-#}
+{%- if "csrf_trusted_origins" not in mapdata.config.django %}
+  {%- do mapdata.config.django.update({"csrf_trusted_origins": [mapdata.config.healthchecks.site_root]}) %}
+{%- endif %}
