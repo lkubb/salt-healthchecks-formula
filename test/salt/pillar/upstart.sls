@@ -44,6 +44,7 @@ healthchecks:
     remove_all_data_for_sure: false
     podman_api: true
   config:
+    django: {}
     healthchecks:
       debug: false
     misc:

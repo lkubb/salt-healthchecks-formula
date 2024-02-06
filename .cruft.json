@@ -36,6 +36,7 @@
           "healthchecks": {
             "debug": false
           },
+          "django": {},
           "misc": {
             "port": 3475,
             "superuser_init_email": null,

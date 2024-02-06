@@ -25,8 +25,6 @@ healthchecks:
   checks_absent: []
     # Healthchecks configuration
     # https://healthchecks.io/docs/self_hosted_configuration/
-    # Standard Django settings are available as well:
-    # https://docs.djangoproject.com/en/5.0/ref/settings/
   config:
     healthchecks:
     # allowed_hosts: ["*"]
@@ -125,6 +123,11 @@ healthchecks:
     # victorops_enabled: true
     # webhooks_enabled: true
     # zulip_enabled: true
+
+      # Standard Django settings are available as well:
+      # https://docs.djangoproject.com/en/5.0/ref/settings/
+    django: {}
+
       # These settings are not specific to the healthchecks app
     misc:
         # Port on container host to map to container port 8000
