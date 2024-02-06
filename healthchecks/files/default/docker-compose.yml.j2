@@ -6,7 +6,7 @@ services:
     env_file:
       - {{ healthchecks.lookup.paths.config_healthchecks }}
     volumes:
-      - {{ healthchecks.lookup.paths.data }}:/config
+      - {{ healthchecks.lookup.paths.data }}:/config:Z
     ports:
       - {{ healthchecks.config.misc.port }}:8000
 {%- if healthchecks.install.autoupdate %}
