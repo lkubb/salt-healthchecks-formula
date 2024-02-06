@@ -47,7 +47,6 @@ values:
       debug: false
     misc:
       port: 3475
-      regenerate_settings: true
       superuser_init_email: null
       superuser_init_email_pillar: null
       superuser_init_pass: null

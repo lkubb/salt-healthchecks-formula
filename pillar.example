@@ -25,6 +25,8 @@ healthchecks:
   checks_absent: []
     # Healthchecks configuration
     # https://healthchecks.io/docs/self_hosted_configuration/
+    # Standard Django settings are available as well:
+    # https://docs.djangoproject.com/en/5.0/ref/settings/
   config:
     healthchecks:
     # allowed_hosts: ["*"]
@@ -127,9 +129,6 @@ healthchecks:
     misc:
         # Port on container host to map to container port 8000
       port: 3475
-        # Always regenerate the settings file from env vars.
-        # Setting this to false makes this formula not work as expected.
-      regenerate_settings: true
         # If there is no superuser in the DB, generate one with this email
       superuser_init_email: null
         # Pillar key to look up email address from (avoids cache writes)
