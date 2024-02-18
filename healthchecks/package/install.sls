@@ -16,6 +16,21 @@ Healthchecks user account is present:
     - groups: {{ healthchecks.lookup.user.groups | json }}
     # (on Debian 11) subuid/subgid are only added automatically for non-system users
     - system: false
+  file.append:
+    - names:
+      - {{ healthchecks.lookup.user.home | path_join(".bashrc") }}:
+        - text:
+          - export XDG_RUNTIME_DIR=/run/user/$(id -u)
+          - export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
+
+      - {{ healthchecks.lookup.user.home | path_join(".bash_profile") }}:
+        - text: |
+            if [ -f ~/.bashrc ]; then
+              . ~/.bashrc
+            fi
+
+    - require:
+      - user: {{ healthchecks.lookup.user.name }}
 
 Healthchecks user session is initialized at boot:
   compose.lingering_managed:
